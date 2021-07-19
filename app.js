@@ -13,20 +13,46 @@ const adminRoutes = require('./routes/admin');
 const shopRouter = require('./routes/shop');
 const errorController = require('./controllers/error');
 const sequelize = require('./utils/database');
+const Product = require('./models/Product');
+const User = require('./models/User');
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+app.use((req, res, next) => {
+  User.findByPk(1)
+    .then((user) => {
+      req.user = user;
+      next();
+    })
+    .catch((error) => console.log(error));
+});
 
 app.use('/admin', adminRoutes);
 app.use(shopRouter);
 
 app.use(errorController.get404);
 
-sequelize.sync()
-  .then(result => {
-    app.listen(3000);
-  })
-  .catch(err => console.log(err)); //sync() to create table in the database
+Product.belongsTo(User, { constraints: true, onDelete: 'CASCADE'});
+User.hasMany(Product);
+
+sequelize
+  // .sync({ force: true })
+  .sync()
+    .then(result => {
+      return User.findByPk(1);
+    })
+    .then((user) => {
+      if(!user) {
+        return User.create({ name: 'Jay', email: 'test@gmail.com'});
+      }
+      return user;
+    })
+    .then((user) => {
+      // console.log(user);
+      app.listen(3000);
+    })
+    .catch(err => console.log(err)); //sync() to create table in the database
 
 
 
